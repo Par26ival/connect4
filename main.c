@@ -144,16 +144,15 @@ bool is_valid_move(ConnectFour *game, int column)
 
 void make_AI_move(ConnectFour *game)
 {
-    
-    srand(time(NULL)); 
+
+    srand(time(NULL));
 
     int column;
     do
     {
-        column = rand() % game->width; 
+        column = rand() % game->width;
     } while (!is_valid_move(game, column));
 
-    
     for (int row = game->height - 1; row >= 0; row--)
     {
         if (game->board[row][column] == ' ')
@@ -204,7 +203,7 @@ int main()
         }
         else if (mode == 2 && game.current_player == 'O')
         {
-            make_AI_move(&game); 
+            make_AI_move(&game);
         }
 
         save_to_file(&game, filename);
