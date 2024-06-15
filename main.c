@@ -1,5 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <limits.h>
+#include <time.h>
+#include <stdbool.h>
 
 #define MAX_HEIGHT 20
 #define MAX_WIDTH 40
@@ -24,7 +27,6 @@ void initialize_board(ConnectFour *game)
     }
     game->current_player = 'X';
 }
-
 
 void display_board(ConnectFour *game)
 {
@@ -65,7 +67,6 @@ void switch_player(ConnectFour *game)
     game->current_player = (game->current_player == 'X') ? 'O' : 'X';
 }
 
-
 int check_direction(ConnectFour *game, int row, int col, int delta_row, int delta_col)
 {
     char token = game->board[row][col];
@@ -91,10 +92,7 @@ int check_win(ConnectFour *game)
             {
                 continue;
             }
-            if (check_direction(game, i, j, 1, 0) ||
-                check_direction(game, i, j, 0, 1) ||
-                check_direction(game, i, j, 1, 1) ||
-                check_direction(game, i, j, 1, -1))
+            if (check_direction(game, i, j, 1, 0) || check_direction(game, i, j, 0, 1) || check_direction(game, i, j, 1, 1) || check_direction(game, i, j, 1, -1))
             {
                 return 1;
             }
@@ -139,6 +137,35 @@ void save_to_file(ConnectFour *game, const char *filename)
     fclose(file);
 }
 
+bool is_valid_move(ConnectFour *game, int column)
+{
+    return (column >= 0 && column < game->width && game->board[0][column] == ' ');
+}
+
+void make_AI_move(ConnectFour *game)
+{
+    // Simple AI: randomly choose a valid column
+    srand(time(NULL)); // Seed for random number generation
+
+    int column;
+    do
+    {
+        column = rand() % game->width; // Generate random column
+    } while (!is_valid_move(game, column));
+
+    // Make AI's move
+    for (int row = game->height - 1; row >= 0; row--)
+    {
+        if (game->board[row][column] == ' ')
+        {
+            game->board[row][column] = game->current_player;
+            break;
+        }
+    }
+
+    printf("Player %c (AI) chose column %d.\n", game->current_player, column + 1);
+}
+
 int main()
 {
     ConnectFour game;
@@ -156,16 +183,28 @@ int main()
     printf("Enter filename to save the game state: ");
     scanf("%s", filename);
 
+    int mode;
+    printf("Choose game mode: 1. Player vs Player 2. Player vs Computer: ");
+    scanf("%d", &mode);
+
     while (1)
     {
         display_board(&game);
         int move;
-        printf("Player %c, enter column (1-%d): ", game.current_player, game.width);
-        scanf("%d", &move);
-        if (!drop_token(&game, move - 1))
+
+        if (mode == 1 || (mode == 2 && game.current_player == 'X'))
         {
-            printf("Invalid move. Try again.\n");
-            continue;
+            printf("Player %c, enter column (1-%d): ", game.current_player, game.width);
+            scanf("%d", &move);
+            if (!drop_token(&game, move - 1))
+            {
+                printf("Invalid move. Try again.\n");
+                continue;
+            }
+        }
+        else if (mode == 2 && game.current_player == 'O')
+        {
+            make_AI_move(&game); // AI makes a move
         }
 
         save_to_file(&game, filename);
