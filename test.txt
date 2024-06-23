@@ -1,6 +1,2 @@
-| | | | |
-| |O|X| |
-|O|O|X| |
-|O|X|X|X|
-|X|O|X|O|
----------
+Game results:
+Winner: AI

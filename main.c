@@ -1,228 +1,164 @@
 #include <stdio.h>
-#include <stdlib.h>
-#include <limits.h>
-#include <time.h>
 #include <stdbool.h>
+#include <stdlib.h>
+#include <math.h>
+#include <time.h>
 
 #define MAX_HEIGHT 20
 #define MAX_WIDTH 40
-#define MIN_SIZE 4
 
-typedef struct
-{
-    int height;
-    int width;
-    char board[MAX_HEIGHT][MAX_WIDTH];
-    char current_player;
-} ConnectFour;
+#define EMPTY 0
+#define PLAYER_PIECE 1
+#define AI_PIECE 2
 
-void initialize_board(ConnectFour *game)
+#define PLAYER 0
+#define AI 1
+
+int board[MAX_HEIGHT][MAX_WIDTH];
+int height, width;
+
+void create_board()
 {
-    for (int i = 0; i < game->height; ++i)
+    for (int r = 0; r < height; r++)
     {
-        for (int j = 0; j < game->width; ++j)
+        for (int c = 0; c < width; c++)
         {
-            game->board[i][j] = ' ';
+            board[r][c] = EMPTY;
         }
     }
-    game->current_player = 'X';
 }
 
-void display_board(ConnectFour *game)
+void print_board()
 {
-    for (int i = 0; i < game->height; ++i)
+    printf(" ");
+    for (int c = 0; c < width; c++)
     {
-        for (int j = 0; j < game->width; ++j)
-        {
-            printf("|%c", game->board[i][j]);
-        }
-        printf("|\n");
+        printf("%d ", c + 1);
     }
-    for (int j = 0; j < game->width; ++j)
+    printf("\n");
+
+    for (int r = height - 1; r >= 0; r--)
+    {
+        printf("|");
+        for (int c = 0; c < width; c++)
+        {
+            if (board[r][c] == EMPTY)
+            {
+                printf(" |");
+            }
+            else if (board[r][c] == PLAYER_PIECE)
+            {
+                printf("X|");
+            }
+            else if (board[r][c] == AI_PIECE)
+            {
+                printf("O|");
+            }
+        }
+        printf("\n");
+    }
+    for (int c = 0; c < width; c++)
     {
         printf("--");
     }
     printf("-\n");
 }
 
-int drop_token(ConnectFour *game, int column)
+bool is_valid_location(int col)
 {
-    if (column < 0 || column >= game->width)
+    return board[height - 1][col] == EMPTY;
+}
+
+void drop_piece(int row, int col, int piece)
+{
+    board[row][col] = piece;
+}
+
+int get_next_open_row(int col)
+{
+    for (int r = 0; r < height; r++)
     {
-        return 0;
-    }
-    for (int i = game->height - 1; i >= 0; --i)
-    {
-        if (game->board[i][column] == ' ')
+        if (board[r][col] == EMPTY)
         {
-            game->board[i][column] = game->current_player;
-            return 1;
+            return r;
         }
     }
-    return 0;
+    return -1; // If column is full (should not happen if is_valid_location is checked)
 }
 
-void switch_player(ConnectFour *game)
+bool winning_move(int piece)
 {
-    game->current_player = (game->current_player == 'X') ? 'O' : 'X';
-}
-
-int check_direction(ConnectFour *game, int row, int col, int delta_row, int delta_col)
-{
-    char token = game->board[row][col];
-    for (int i = 1; i < 4; ++i)
+    // Check horizontal
+    for (int r = 0; r < height; r++)
     {
-        int r = row + delta_row * i;
-        int c = col + delta_col * i;
-        if (r < 0 || r >= game->height || c < 0 || c >= game->width || game->board[r][c] != token)
+        for (int c = 0; c <= width - 4; c++)
         {
-            return 0;
-        }
-    }
-    return 1;
-}
-
-int check_win(ConnectFour *game)
-{
-    for (int i = 0; i < game->height; ++i)
-    {
-        for (int j = 0; j < game->width; ++j)
-        {
-            if (game->board[i][j] == ' ')
+            if (board[r][c] == piece &&
+                board[r][c + 1] == piece &&
+                board[r][c + 2] == piece &&
+                board[r][c + 3] == piece)
             {
-                continue;
-            }
-            if (check_direction(game, i, j, 1, 0) || check_direction(game, i, j, 0, 1) || check_direction(game, i, j, 1, 1) || check_direction(game, i, j, 1, -1))
-            {
-                return 1;
+                return true;
             }
         }
     }
-    return 0;
-}
 
-int is_full(ConnectFour *game)
-{
-    for (int i = 0; i < game->width; ++i)
+    // Check vertical
+    for (int c = 0; c < width; c++)
     {
-        if (game->board[0][i] == ' ')
+        for (int r = 0; r <= height - 4; r++)
         {
-            return 0;
-        }
-    }
-    return 1;
-}
-
-void save_to_file(ConnectFour *game, const char *filename)
-{
-    FILE *file = fopen(filename, "w");
-    if (file == NULL)
-    {
-        perror("Failed to open file");
-        return;
-    }
-    for (int i = 0; i < game->height; ++i)
-    {
-        for (int j = 0; j < game->width; ++j)
-        {
-            fprintf(file, "|%c", game->board[i][j]);
-        }
-        fprintf(file, "|\n");
-    }
-    for (int j = 0; j < game->width; ++j)
-    {
-        fprintf(file, "--");
-    }
-    fprintf(file, "-\n");
-    fclose(file);
-}
-
-bool is_valid_move(ConnectFour *game, int column)
-{
-    return (column >= 0 && column < game->width && game->board[0][column] == ' ');
-}
-
-void make_AI_move(ConnectFour *game)
-{
-
-    srand(time(NULL));
-
-    int column;
-    do
-    {
-        column = rand() % game->width;
-    } while (!is_valid_move(game, column));
-
-    for (int row = game->height - 1; row >= 0; row--)
-    {
-        if (game->board[row][column] == ' ')
-        {
-            game->board[row][column] = game->current_player;
-            break;
-        }
-    }
-
-    printf("Player %c (AI) chose column %d.\n", game->current_player, column + 1);
-}
-
-int main()
-{
-    ConnectFour game;
-    printf("Enter board dimensions (height width): ");
-    scanf("%d %d", &game.height, &game.width);
-
-    if (game.height < MIN_SIZE || game.height > MAX_HEIGHT || game.width < MIN_SIZE || game.width > MAX_WIDTH)
-    {
-        printf("Invalid board size.\n");
-        return 1;
-    }
-
-    initialize_board(&game);
-    char filename[256];
-    printf("Enter filename to save the game state: ");
-    scanf("%s", filename);
-
-    int mode;
-    printf("Choose game mode: 1. Player vs Player 2. Player vs Computer: ");
-    scanf("%d", &mode);
-
-    while (1)
-    {
-        display_board(&game);
-        int move;
-
-        if (mode == 1 || (mode == 2 && game.current_player == 'X'))
-        {
-            printf("Player %c, enter column (1-%d): ", game.current_player, game.width);
-            scanf("%d", &move);
-            if (!drop_token(&game, move - 1))
+            if (board[r][c] == piece &&
+                board[r + 1][c] == piece &&
+                board[r + 2][c] == piece &&
+                board[r + 3][c] == piece)
             {
-                printf("Invalid move. Try again.\n");
-                continue;
+                return true;
             }
         }
-        else if (mode == 2 && game.current_player == 'O')
-        {
-            make_AI_move(&game);
-        }
-
-        save_to_file(&game, filename);
-
-        if (check_win(&game))
-        {
-            display_board(&game);
-            printf("Player %c wins!\n", game.current_player);
-            break;
-        }
-        else if (is_full(&game))
-        {
-            display_board(&game);
-            printf("The game is a draw!\n");
-            break;
-        }
-
-        switch_player(&game);
     }
 
-    return 0;
+    // Check diagonal (positive slope)
+    for (int r = 0; r <= height - 4; r++)
+    {
+        for (int c = 0; c <= width - 4; c++)
+        {
+            if (board[r][c] == piece &&
+                board[r + 1][c + 1] == piece &&
+                board[r + 2][c + 2] == piece &&
+                board[r + 3][c + 3] == piece)
+            {
+                return true;
+            }
+        }
+    }
+
+    // Check diagonal (negative slope)
+    for (int r = 3; r < height; r++)
+    {
+        for (int c = 0; c <= width - 4; c++)
+        {
+            if (board[r][c] == piece &&
+                board[r - 1][c + 1] == piece &&
+                board[r - 2][c + 2] == piece &&
+                board[r - 3][c + 3] == piece)
+            {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+bool is_full()
+{
+    for (int c = 0; c < width; c++)
+    {
+        if (board[0][c] == EMPTY)
+        {
+            return false;
+        }
+    }
+    return true;
 }
