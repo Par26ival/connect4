@@ -1,2 +1,2 @@
 Game results:
-Winner: AI
+Game ended in a draw.
